@@ -1,0 +1,74 @@
+#!/bin/bash
+set -e
+
+nodes="-nodes"
+if [[ "$1" == "-des" ]]; then
+    nodes=""
+    shift
+fi
+
+if [[ ! "$1" || ! "$2" || "$1" =~ "^-" ]]; then
+    echo "usage: $0 [-des] CommonName directory"
+    exit 2
+fi
+
+name="$1"
+dir="$2"
+
+subj="/C=CA/ST=Ontario/L=Toronto/O=Luminautics Inc./CN=$name"
+
+cakey="ca.key"
+if [[ ! "$nodes" ]]; then
+    cakey="$cakey-encrypted"
+fi
+
+if [[ -d "$dir" ]]; then
+    echo "error: $dir/ exists"
+    exit 1
+fi
+
+mkdir "$dir"
+cat "`dirname "$0"`"/openssl.default.cfg | sed -e "s/{{CAKEY}}/$cakey/" > "$dir/openssl.cfg"
+cd "$dir"
+
+# Because we want to explicitly set the default start and end dates (see
+# default_startdate, default_enddate in openssl.cfg), some hoops need to be
+# jumped through:
+#  - A key + self-signed cert must be created
+#  - A CSR must be generated from that key
+#  - Then the self-signed cert must be used to sign the CSR
+
+# First create a key + self-signed certificate
+openssl req -new -x509 -config ./openssl.cfg \
+            -keyout "$cakey" \
+            -out "temp_cert.crt" \
+            -subj "$subj" \
+            $nodes \
+            -extensions "standard_ca"
+
+mkdir "certs"
+touch "database"
+echo "0001" > "serial"
+
+# Generate a new CSR from the private key
+openssl req -new -config ./openssl.cfg \
+            -key "$cakey" \
+            -out "temp_csr.csr" \
+            -subj "$subj" \
+            $nodes \
+            -extensions "standard_ca"
+
+# Use the self-signed certificate to sign the CSR, producing the final
+# certificate.
+openssl ca -config ./openssl.cfg \
+           -batch \
+           -cert "temp_cert.crt" \
+           -out "ca.crt" \
+           -in "temp_csr.csr" \
+           -extensions "standard_ca"
+
+# Optionally, export the cert in pkcs12 format
+openssl pkcs12 -export -in "$cakey" -out "ca.p12"
+
+# Cleanup!
+rm temp_*

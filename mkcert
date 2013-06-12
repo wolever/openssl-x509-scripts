@@ -1,0 +1,91 @@
+#!/bin/bash
+
+set -e
+
+usage() {
+    echo "usage: $0 [-server] [-des] ca keyname"
+    echo "  -server    include 'nsCertType=server' in the certificate"
+    echo "             (for use with OpenVPN's 'ns-cert-type' option)"
+    echo "  -des       also include an encrypted private key"
+}
+
+extensions="standard"
+nodes="-nodes"
+
+while :; do
+    if [[ $# -eq 2 ]]; then
+        break
+    fi
+    case "${1-}" in
+        "-server")
+            extensions="server"
+            shift
+            ;;
+        "-des")
+            nodes=""
+            shift
+            ;;
+        **)
+            usage
+            exit 2
+            ;;
+    esac
+done
+
+
+ca="${1%/}"
+keyname="$2"
+
+subj="/C=CA/ST=Ontario/L=Toronto/CN=$keyname"
+
+if [[ ! -d "$ca" ]]; then
+    echo "error: can't find $ca/"
+    exit 1
+fi
+
+cd "$ca/"
+
+echo "--- creating key ---"
+
+keyfile="$keyname-temp.key" 
+reqfile="$keyname-temp.csr"
+crtfile="$keyname-temp.crt"
+
+openssl req -new -config ./openssl.cfg \
+            -keyout "$keyfile" \
+            -out "$reqfile" \
+            -subj "$subj" \
+            -nodes \
+            -extensions "$extensions"
+
+if [[ -f "passphrase" ]]; then
+    echo "=========="
+    echo "PASSWORD: `cat passphrase`"
+    echo "=========="
+fi
+
+openssl ca -config ./openssl.cfg \
+           -batch \
+           -noemailDN \
+           -in "$reqfile" \
+           -out "$crtfile" \
+           -extensions "$extensions"
+
+pemfile="certs/$keyname.pem"
+if [[ "$nodes" ]]; then
+    cat "$crtfile" "$keyfile" > "$pemfile"
+    echo "$ca/$pemfile created."
+else
+    # Store an encrypted copy of the certificate in the CA's store
+    openssl rsa '-in' "$keyfile" -des3 -out "$keyfile-encrypted" 
+    cat "$crtfile" "$keyfile-encrypted" > "$pemfile-encrypted"
+    echo "$ca/$pemfile-encrypted created."
+
+    # And stick an unencrypted copy of the certificate in /tmp/
+    touch "/tmp/$keyname.pem"
+    chmod 600 "/tmp/$keyname.pem"
+    cat "$crtfile" "$keyfile" > "/tmp/$keyname.pem"
+    echo "/tmp/$keyname.pem created"
+fi
+
+rm "$keyname-temp"*

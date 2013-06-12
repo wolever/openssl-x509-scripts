@@ -1,0 +1,6 @@
+#!/bin/bash
+# from http://dv-zeuthen.desy.de/security/examples_for_usage_of_openssl_command/
+
+openssl rsa -noout -text -in "$1" | head -n5
+echo "..."
+openssl x509 -noout -text -in "$1"
