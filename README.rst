@@ -8,6 +8,7 @@ Usage
 -----
 
 1. Create a certificate authority::
+
     $ ./mkca <ca_name>
     .............++++++
     .....++++++
@@ -21,6 +22,7 @@ Usage
 
 #. Create an SSL certificate (where ``<cert_cn>`` will be the common name used
    on the certificate)::
+
     $ ./mkcert <ca_name> <cert_cn>
     --- creating key ---
     Generating a 1024 bit RSA private key
@@ -40,8 +42,9 @@ Usage
     Data Base Updated
     <ca_name>/certs/<cert_cn>.pem created.
 
-#. Use the ``dump_ssl`` script to verify that the certificate is correct::
-    $ ./dump_ssl <ca_name>/certs/<cert_cn>.pem
+#. Use the ``certcat`` script to verify that the certificate is correct::
+
+    $ ./certcat <ca_name>/certs/<cert_cn>.pem
     Private-Key: (1024 bit)
     modulus:
         00:b4:8c:01:20:52:a5:f1:11:d1:d1:52:bd:ec:7b:
@@ -83,4 +86,5 @@ Usage
 
 #. Copy the new key and certificate (which has been signed by ``<ca_name>``)
    into place::
+
     $ scp <ca_name>/certs/<cert_cn>.pem host:/etc/ssl/private/<cert_cn>.pem
