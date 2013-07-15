@@ -1,8 +1,8 @@
-SSL Helpers
-===========
+OpenSSL x509 Scripts
+====================
 
-These scripts can be used to generate different kinds of SSL keys and
-certificates.
+Scripts for creating an x509 certificate authority and using it to create and
+sign certificates.
 
 Usage
 -----

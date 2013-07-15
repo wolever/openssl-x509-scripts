@@ -15,7 +15,7 @@ fi
 name="$1"
 dir="$2"
 
-subj="/C=CA/ST=Ontario/L=Toronto/O=Luminautics Inc./CN=$name"
+subj="/C=CA/ST=Ontario/L=Toronto/CN=$name"
 
 cakey="ca.key"
 if [[ ! "$nodes" ]]; then
